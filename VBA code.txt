@@ -1,0 +1,89 @@
+Function LLtoUTM(Lat As Double, Lon As Double, ReturnType As String) As Double
+
+    ' Define constants
+    Const PI As Double = 3.14159265358979
+    Const WGS84_A As Double = 6378137
+    Const WGS84_E As Double = 0.0818191908426
+    
+    ' Validate input
+    If Lat < -90 Or Lat > 90 Or Lon < -180 Or Lon > 180 Then
+        MsgBox "Invalid latitude or longitude"
+        Exit Function
+    End If
+    
+    ' Calculate UTM Zone
+    Dim zone As Integer
+    zone = Int((Lon + 180) / 6) + 1
+
+    ' Calculate longitude origin
+    Dim LonOrigin As Double
+    LonOrigin = (zone - 1) * 6 - 180 + 3
+
+    ' Calculate M (true distance along the central meridian)
+    Dim N1 As Double, T1 As Double, C1 As Double, A1 As Double, M As Double
+    N1 = WGS84_A / Sqr(1 - WGS84_E ^ 2 * Sin(Lat * PI / 180) ^ 2)
+    T1 = Tan(Lat * PI / 180) ^ 2
+    C1 = WGS84_E ^ 2 * Cos(Lat * PI / 180) ^ 2 / (1 - WGS84_E ^ 2)
+    A1 = (Lon - LonOrigin) * PI / 180 * Cos(Lat * PI / 180)
+    M = WGS84_A * ((1 - WGS84_E ^ 2 / 4 - 3 * WGS84_E ^ 4 / 64 - 5 * WGS84_E ^ 6 / 256) * Lat * PI / 180 _
+                   - (3 * WGS84_E ^ 2 / 8 + 3 * WGS84_E ^ 4 / 32 + 45 * WGS84_E ^ 6 / 1024) * Sin(2 * Lat * PI / 180) _
+                   + (15 * WGS84_E ^ 4 / 256 + 45 * WGS84_E ^ 6 / 1024) * Sin(4 * Lat * PI / 180) _
+                   - (35 * WGS84_E ^ 6 / 3072) * Sin(6 * Lat * PI / 180))
+
+    ' Calculate Easting and Northing
+    Dim easting As Double, northing As Double
+    easting = 500000 + N1 * (A1 + (1 - T1 + C1) * A1 ^ 3 / 6 + (5 - 18 * T1 + T1 ^ 2 + 72 * C1 - 58 * WGS84_E ^ 2) * A1 ^ 5 / 120)
+    northing = N1 * (A1 ^ 2 / 2 + (5 - T1 + 9 * C1 + 4 * C1 ^ 2) * A1 ^ 4 / 24 + (61 - 58 * T1 + T1 ^ 2 + 600 * C1 - 330 * WGS84_E ^ 2) * A1 ^ 6 / 720) + M
+    
+    ' Return Easting or Northing based on ReturnType parameter
+    Select Case UCase(ReturnType)
+        Case "E"
+            LLtoUTM =  Easting  
+	    
+       Case "N"
+        LLtoUTM = northing
+
+       Case Else
+        MsgBox "Invalid ReturnType. Use 'E' for Easting or 'N' for Northing."
+End Select
+End Function
+
+Function LatitudeBand(latitude As Double) As String
+
+vbnet
+Copy code
+' Validate input
+If latitude < -80 Or latitude > 84 Then
+    LatitudeBand = "Invalid latitude"
+    Exit Function
+End If
+
+' Define band letters and calculate band
+Dim bandLetters As String
+bandLetters = "CDEFGHJKLMNPQRSTUVWX"
+LatitudeBand = Mid(bandLetters, Int((latitude + 80) / 8) + 1, 1)
+End Function
+
+Function GridLetter(easting As Double, northing As Double, zone As Long) As String
+
+vbnet
+Copy code
+' Define column and row letters
+Dim colLetters As String, rowLetters As String
+colLetters = "ABCDEFGHJKLMNPQRSTUVWXYZ"
+rowLetters = "ABCDEFGHJKLMNPQRSTUV"
+
+' Calculate column and row
+Dim col As Integer, row As Integer
+col = Int((easting - 100000) / 100000) Mod 20
+row = Int((northing - 100000) / 100000) Mod 20
+
+' Adjust row for even-numbered zones
+If zone Mod 2 = 0 Then
+    row = (row + 5) Mod 20
+End If
+
+' Return grid letter
+GridLetter = Mid(colLetters, col + 1, 1) & Mid(rowLetters, row + 1, 1)
+
+End Function
